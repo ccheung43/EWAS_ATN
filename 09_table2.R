@@ -75,7 +75,14 @@ significant_sites <- significant_sites %>%
     "PTAU181" = "pTau-181", 
     "NFLIGHT" = "NfL", 
     "GFAP" = "GFAP")
-  )
+  ) %>% 
+  rowwise() %>%
+  mutate(Nearest_gene = paste(unique(strsplit(Nearest_gene, ";")[[1]]), collapse = ";")) %>%
+  ungroup() %>% 
+  as_tibble() %>% 
+  mutate(Effect_estimate_beta = round(Effect_estimate_beta, 3), 
+         SE = round(SE, 3), 
+         p_value = signif(p_value, 3))
 
 top10_sites <- top10_sites %>% 
   mutate(Biomarker = recode(Biomarker, 
@@ -91,6 +98,6 @@ row1 = c("Biomarker", "CpG site","Chr", "Nearest gene", "Effect estimate (beta)"
 significant_sites <- rbind(row1, significant_sites)
 top10_sites <- rbind(row1, top10_sites)
 
-write.xlsx(significant_sites, "2024_EWAS_ATN/ATN_EWAS/Results/20250326_table2_significant_sites.xlsx", rowNames = FALSE, colNames = FALSE)
-write.xlsx(top10_sites, "2024_EWAS_ATN/ATN_EWAS/Results/20250327_table2_top10_sites.xlsx", rowNames = FALSE, colNames = FALSE)
+write.xlsx(significant_sites, "2024_EWAS_ATN/ATN_EWAS/Results/20250515_table2_significant_sites.xlsx", rowNames = FALSE, colNames = FALSE)
+#write.xlsx(top10_sites, "2024_EWAS_ATN/ATN_EWAS/Results/20250327_table2_top10_sites.xlsx", rowNames = FALSE, colNames = FALSE)
 

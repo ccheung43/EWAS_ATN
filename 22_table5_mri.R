@@ -5,7 +5,7 @@ library(tidyverse)
 library(openxlsx)
 
 # load the data tables of significant sites
-sig_cpg <- read.xlsx("2024_EWAS_ATN/ATN_EWAS/Results/20250326_table2_significant_sites.xlsx") %>% 
+sig_cpg <- read.xlsx("2024_EWAS_ATN/ATN_EWAS/Results/20250515_table2_significant_sites.xlsx") %>% 
   select(CpG.site, Biomarker)
 tcv <- read.csv("2024_EWAS_ATN/ATN_EWAS/Results/MRI_secondary/20250508_tcv_cpg_assosiations.csv") %>% 
   select(estimate, se, fdr_bh) %>% 
@@ -25,7 +25,8 @@ tgv <- read.csv("2024_EWAS_ATN/ATN_EWAS/Results/MRI_secondary/20250508_tgv_cpg_a
 
 # combine into table 
 table5 <- cbind(sig_cpg, tcv, tcb, wmh, hip, tgv)
-  
+
+
 row1 <- c("", "", "TCV", "", "", "TCB", "", "", "WMH", "", "", "HIPPO", "", "", "TGV", "", "")
 row2 <- c("CpG Site", "Biomarker", 
           "Effect estimate", "SE", "p-value",

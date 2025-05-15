@@ -43,8 +43,8 @@ find_sig_sites <- function(biomarker) {
   # Identify significant SNPs
   sig_sites <- df$CpG_site[FDR_pvals < 0.10]
   sig_df <- df %>% filter(CpG_site %in% sig_sites) %>% 
-    arrange(p_value) %>% 
-    pivot_wider(names_from = "Subgroup", values_from = c("Effect_estimate_beta", "SE", "p_value"))
+    pivot_wider(names_from = "Subgroup", values_from = c("Effect_estimate_beta", "SE", "p_value")) %>% 
+    arrange(p_value_E4)
   
   #top <- df %>% arrange(p_value) %>% slice_head(n = 10)
   return(sig_df)  
@@ -56,11 +56,21 @@ sig_sites <- lapply(biomarkers, function(biomarker) {
 })
 
 significant_sites <- do.call(rbind, sig_sites) %>%
-  select("Biomarker", "CpG_site","Chr", "Nearest_gene", "Effect_estimate_beta_E4", "SE_E4", "p_value_E4", "Effect_estimate_beta_Control", "SE_Control", "p_value_Control")
+  select("Biomarker", "CpG_site","Chr", "Nearest_gene", "Effect_estimate_beta_E4", "SE_E4", "p_value_E4", "Effect_estimate_beta_Control", "SE_Control", "p_value_Control") %>% 
+  rowwise() %>%
+  mutate(Nearest_gene = paste(unique(strsplit(Nearest_gene, ";")[[1]]), collapse = ";")) %>%
+  ungroup() %>% 
+  as_tibble() %>% 
+  mutate(Effect_estimate_beta_E4 = round(Effect_estimate_beta_E4, 3), 
+         SE_E4 = round(SE_E4, 3), 
+         p_value_E4 = signif(p_value_E4, 3)) %>% 
+  mutate(Effect_estimate_beta_Control = round(Effect_estimate_beta_Control, 3), 
+         SE_Control = round(SE_Control, 3), 
+         p_value_Control = signif(p_value_Control, 3))
 
 row1 = c("", "", "", "", paste0("\u03B5", "4 Carrier"), "","", "Control", "", "")
 row2 = c("Biomarker", "CpG site","Chr", "Nearest gene", "Effect estimate (beta)", "SE", "p-value", "Effect estimate (beta)", "SE", "p-value")
 
 significant_sites <- rbind(row1, row2, significant_sites)
 
-write.xlsx(significant_sites, "2024_EWAS_ATN/ATN_EWAS/Results/E4_stratified/20250507_table4_e4_significant_sites.xlsx", rowNames = FALSE, colNames = FALSE)
+write.xlsx(significant_sites, "2024_EWAS_ATN/ATN_EWAS/Results/E4_stratified/20250515_table4_e4_significant_sites.xlsx", rowNames = FALSE, colNames = FALSE)
