@@ -11,9 +11,6 @@ data_file = "2024_EWAS_ATN/ATN_EWAS/Data/20250224_ATN_pheno.csv"
 dat <- read.csv(data_file)
 
 # Removing ATN biomarker batch effects
-# Convert plate position to linear position 
-dat <- dat %>%
-  mutate(PLATE_POS_LINEAR = as.numeric(factor(PLATE_POS, levels = paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", 1:12)))))
 
 # Loop through each ATN biomarkers
 biomarker_vars = c("ABETA40", "ABETA42", "PTAU181", "NFLIGHT", "GFAP")
@@ -22,40 +19,40 @@ for (biomarker in biomarker_vars) {
   temp_dat <- dat %>% filter(!is.na(dat[[biomarker]]))
   
   fit.warn <- tryCatch(
-    {list(lmer(as.formula(paste0(biomarker, " ~ AGE + SEX + BMI + CENTER + (1 | PLATE_NUM) + PLATE_POS_LINEAR")), data = temp_dat), "MixedOK")},
+    {list(lmer(as.formula(paste0(biomarker, " ~ AGE + SEX + BMI + CENTER + (1 | PLATE_NUM) + (1 | PLATE_POS)")), data = temp_dat), "MixedOK")},
     warning = function(Warn) {
       print(paste("MY_WARNING:  ", Warn))
-      fit <- lm(as.formula(paste0(biomarker, " ~ AGE + SEX + BMI + CENTER + PLATE_POS_LINEAR")), data = temp_dat)
+      fit <- lm(as.formula(paste0(biomarker, " ~ AGE + SEX + BMI + CENTER")), data = temp_dat)
       return(list(fit, "Warn"))
     },
     error = function(err) {
       print(paste("MY_ERROR:  ", err))
-      fit <- lm(as.formula(paste0(biomarker, " ~ AGE + SEX + BMI + CENTER + PLATE_POS_LINEAR")), data = temp_dat)
+      fit <- lm(as.formula(paste0(biomarker, " ~ AGE + SEX + BMI + CENTER")), data = temp_dat)
       return(list(fit, "err"))
     }
   )
   
   fit <- fit.warn[[1]]
   
-  # Remove plate position effect
-  model.mat <- model.matrix(fit)
-  PLATE_POS_LINEAR.mat <- model.mat[, "PLATE_POS_LINEAR"]
-  PLATE_POS_LINEAR.effects <- summary(fit)$coefficients["PLATE_POS_LINEAR", "Estimate"]
-  
-  # Create a vector of adjusted biomarker values for the original dataset
-  dat[[biomarker]][!is.na(dat[[biomarker]])] <- dat[[biomarker]][!is.na(dat[[biomarker]])] - PLATE_POS_LINEAR.mat * PLATE_POS_LINEAR.effects
-  
-  # If the mixed model worked, remove the random plate number effect
   if (fit.warn[[2]] == "MixedOK") {
-    dat$PLATE_RAND <- ranef(fit)$PLATE_NUM[match(dat$PLATE_NUM, rownames(ranef(fit)$PLATE_NUM)), 1]
-    dat[[biomarker]] <- dat[[biomarker]] - dat$PLATE_RAND
+    ranef_list <- ranef(fit)
+    
+    # Subtract random effect of PLATE_NUM
+    dat$PLATE_RAND <- ranef_list$PLATE_NUM[match(dat$PLATE_NUM, rownames(ranef_list$PLATE_NUM)), 1]
+    
+    # Subtract random effect of PLATE_POS
+    dat$PLATE_POS_RAND <- ranef_list$PLATE_POS[match(dat$PLATE_POS, rownames(ranef_list$PLATE_POS)), 1]
+    
+    dat[[biomarker]][!is.na(dat[[biomarker]])] <- 
+      dat[[biomarker]][!is.na(dat[[biomarker]])] - dat$PLATE_RAND[!is.na(dat[[biomarker]])] - dat$PLATE_POS_RAND[!is.na(dat[[biomarker]])]
   }
   
-  dat <- dat %>% select(-PLATE_RAND)
+  # Remove temporary columns
+  dat <- dat %>% select(-PLATE_RAND, -PLATE_POS_RAND)
 }
 
 dat_batch_adj <- dat %>% 
-  select(-c(PLATE_NUM, PLATE_POS, PLATE_POS_LINEAR)) %>% 
+  select(-c(PLATE_NUM, PLATE_POS)) %>% 
   mutate(ABETA4240 = ABETA42/ABETA40)
 
 write.csv(dat_batch_adj, "2024_EWAS_ATN/ATN_EWAS/Data/20250224_ATN_batch_adj.csv", row.names = FALSE)
